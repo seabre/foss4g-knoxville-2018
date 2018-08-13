@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' />
+  <title>big</title>
+  <link href='big.css' rel='stylesheet' type='text/css' />
+  <link href='highlight.css' rel='stylesheet' type='text/css' />
+  <style>
+    .new-shiny { background: #aaaaaa; }
+  </style>
+  <script src='big.js'></script>
+  <script src='highlight.js'></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+</head>
+<body class='dark'>
+  <div><p>&quot;Hey, where are these spatial indexes?&quot;</p>
+<p>Adventures of PostGIS in Production</p>
+</div>
+<div><h1 id="we-ve-been-at-it-a-while">We&#39;ve Been At It A While</h1>
+<ul>
+<li>PostGIS in production since about 2013</li>
+<li>Serve a bunch of geospatial data. Includes OSM and our customer&#39;s various geospatial data</li>
+<li>Peak at about 10 million requests/mo </li>
+</ul>
+</div>
+<div><h1 id="whyyy">Whyyy</h1>
+<ul>
+<li>Mostly wanted to address mistakes most people make with PostGIS</li>
+<li>Noticed people working way too hard</li>
+<li>I hear &quot;I didn&#39;t know PostGIS could do that&quot; <em>all</em> <em>the</em> <em>time</em></li>
+</ul>
+</div>
+<div><h1 id="most-common-issues-in-my-experiences">Most Common Issues In My Experiences</h1>
+<ul>
+<li>Not using spatial indexes</li>
+<li>Confusion with PostGIS data types and Coordinate Reference Systems</li>
+<li>Not taking advantage of Postgres/PostGIS built-in functionality</li>
+</ul>
+</div>
+<div><p>I want to try my best to address most of these issues.</p>
+</div>
+<div><h1 id="indexes">Indexes</h1>
+</div>
+<div><h1 id="my-general-philosophy">My General Philosophy</h1>
+<ul>
+<li>Don&#39;t index everything, dang it.</li>
+<li>Index only what you need. Use <code>EXPLAIN ANALYZE</code> to figure out if an index on a column will help.<ul>
+<li><code>EXPLAIN ANALYZE SELECT * FROM my_table;</code></li>
+</ul>
+</li>
+</ul>
+</div>
+<div><h1 id="spatial-indexes">Spatial Indexes</h1>
+</div>
+<div><p>Should you index your geometry columns?</p>
+</div>
+<div><h1 id="yes">Yes</h1>
+</div>
+<div><ul>
+<li>One thing I&#39;ve noticed too is that your common import tools (shp2pgsql and ogr2ogr) may not include spatial indexes</li>
+<li>Once your tables get in the thousands you <em>will</em> see slow performance.</li>
+</ul>
+</div>
+<div><p>Let&#39;s compare two similar queries. The only difference is one query&#39;s tables don&#39;t have spatial indexes. The other&#39;s does.</p>
+</div>
+<div><h1 id="with-index-query">With Index: Query</h1>
+<pre><code class="language-sql">SELECT *
+FROM cha_addr_with_idx a
+       LEFT JOIN cha_parcels_with_idx p ON ST_Contains(p.geom, a.wkb_geometry) LIMIT 1000;</code></pre>
+<h1 id="with-index-performance">With Index: Performance</h1>
+<p>Average Runtime: 49.088ms</p>
+</div>
+<div><h1 id="with-index-query-plan">With Index: Query Plan</h1>
+<p><img src="/images/qry_with_index.png" alt="Query plan with index"></p>
+</div>
+<div><h1 id="without-index-query">Without Index: Query</h1>
+<pre><code class="language-sql">SELECT *
+FROM cha_addr_no_idx a
+       LEFT JOIN cha_parcels_no_idx p ON ST_Contains(p.geom, a.wkb_geometry) LIMIT 1000;</code></pre>
+<h1 id="without-index-performance">Without Index: Performance</h1>
+<p>Average Runtime: 24,546.889ms</p>
+</div>
+<div><h1 id="with-index-query-plan">With Index: Query Plan</h1>
+<p><img src="/images/qry_no_index.png" alt="Query plan without index"></p>
+</div>
+<div><h1 id="so-what-kind-of-index-do-i-want">So what kind of index do I want</h1>
+<ul>
+<li>GiST: Generalized Search Tree<ul>
+<li>Not just for geospatial data. Pretty much any kind of data that can overlap (e.g. arrays)</li>
+<li>Great as long as index size isn&#39;t greater than available RAM. If it is, consider looking at BRIN.</li>
+</ul>
+</li>
+</ul>
+</div>
+<div><h1 id="creating-the-index">Creating the index</h1>
+</div>
+<div><pre><code class="language-sql">CREATE INDEX cha_addr_no_idx_wkb_geometry_index
+  ON public.cha_addr_no_idx
+  USING GIST (wkb_geometry);</code></pre>
+</div>
+<div><h1 id="postgis-data-types">PostGIS Data Types</h1>
+</div>
+<div><h1 id="geography">Geography</h1>
+<ul>
+<li>Uses geodetic measurement  </li>
+<li>Always represented in WGS 84 lon lat degrees</li>
+<li>Measurement functions always expect input as and return results in meters</li>
+<li>Best if you need to do computations over a large area (large state or continent) and/or want accuracy<ul>
+<li>There is a performance cost.</li>
+</ul>
+</li>
+<li>If you don&#39;t know what you are doing use this type.</li>
+<li>Certain PostGIS functions don&#39;t work with it. Must cast to geometry.</li>
+</ul>
+</div>
+<div><h1 id="geometry">Geometry</h1>
+<ul>
+<li>Uses cartesian measurement</li>
+<li>Use whatever SRS you want</li>
+<li>Use whatever PostGIS function you want</li>
+</ul>
+</div>
+<div><h1 id="if-you-think-you-chose-the-wrong-type-for-your-table">If you think you chose the wrong type for your table</h1>
+<ul>
+<li>You can change it in your table or query. It&#39;s usually not a big deal.</li>
+<li>You can change it permanent in your table with <code>UpdateGeometrySRID</code>. e.g. <code>SELECT UpdateGeometrySRID(&#39;my_table&#39;,&#39;my_geo_column&#39;, 4326);</code></li>
+<li>You can change it in your query with <code>ST_Transform</code> e.g. <code>SELECT ST_Transform(my_geo_column, 4269) FROM my_table;</code></li>
+<li>You can also cast to geography if you want to transform to geography e.g. <code>SELECT my_geo_column::geography from my_table;</code></li>
+</ul>
+</div>
+<div><p>I don&#39;t know what SRS my data is. How can I find out?</p>
+</div>
+<div><p>Two options:</p>
+<ul>
+<li>Your columns may be constrained to a particular one, so check out your schema.</li>
+<li>Or check your geometry directly <code>SELECT ST_SRID(geom) from my_table;</code></li>
+</ul>
+</div>
+<div><p>The SRS I want doesn&#39;t exist but I really want to use it.</p>
+</div>
+<div><p>You need to insert a record into the <code>spatial_ref_sys</code> table, which has the following definition:</p>
+</div>
+<div><pre><code class="language-sql">CREATE TABLE spatial_ref_sys ( 
+  srid       INTEGER NOT NULL PRIMARY KEY, 
+  auth_name  VARCHAR(256), 
+  auth_srid  INTEGER, 
+  srtext     VARCHAR(2048), 
+  proj4text  VARCHAR(2048) 
+)</code></pre>
+</div>
+<div><p>Let&#39;s use North America Albers Equal Area Conic as an example.
+You need to know:</p>
+<ul>
+<li>The Well-Known Text representation of the Spatial Reference System.</li>
+<li>The Proj4 coordinate definition string for a particular SRID.</li>
+</ul>
+</div>
+<div><p>If you don&#39;t have any of these handy, <a href="http://epsg.io">http://epsg.io</a> is a good resource.</p>
+</div>
+<div><p>Or if you have a shapefile with a <code>.prj</code> file, you can run <code>gdalsrsinfo</code> on it</p>
+</div>
+<div><p><img src="/images/gdalsrsinfo.png" alt="gdalsrsinfo"></p>
+</div>
+<div><p>With that info, if we have what we need we can add our SRS.</p>
+</div>
+<div><p>INSERT into spatial_ref_sys (srid, auth_name, auth_srid, proj4text, srtext)
+values (102008,
+        &#39;ESRI&#39;,
+        102008,
+        srtexthere,
+        proj4texthere);</p>
+</div>
+<div><p>And we can transform an existing geometry to that SRS.</p>
+</div>
+<div><pre><code class="language-sql">SELECT ST_Transform(geom, 102008) FROM my_table;</code></pre>
+</div>
+<div><h1 id="i-have-no-idea-what-srs-i-should-use-and-i-want-postgis-to-figure-it-out-for-me-">I have no idea what SRS I should use and I want PostGIS to figure it out for me.</h1>
+</div>
+<div><h1 id="_st_bestsrid"><code>_ST_BestSRID</code></h1>
+<ul>
+<li>Tries to pick UTM zone, polar stereographic, or to a mercator as last resort.</li>
+<li>Used by the Geography type for certain functions e.g. <code>ST_Buffer</code>: <a href="http://postgis.net/docs/PostGIS_Special_Functions_Index.html#PostGIS_TypeFunctionMatrix">http://postgis.net/docs/PostGIS_Special_Functions_Index.html#PostGIS_TypeFunctionMatrix</a></li>
+<li>Could potentially fail to pick a projection.</li>
+<li>It is a private function, so it is not documented.</li>
+</ul>
+</div>
+<div><pre><code class="language-sql">SELECT ST_Transform(ST_Transform(geom, _ST_BestSRID(geom)) from my_table</code></pre>
+</div>
+<div><h1 id="oh-wow-postgres-and-postgis-can-do-that-">&quot;Oh wow, Postgres and PostGIS can do that?&quot;</h1>
+</div>
+<div><h1 id="json">JSON</h1>
+<ul>
+<li>Postgres can natively operate on JSON and has types (JSON and JSONB) that allow you to store JSON</li>
+<li>JSONB is noteworthy because its <em>indexable</em>, making queries that need to operate on JSON fast</li>
+<li>We use GeoJSON <em>a lot</em>, but we don&#39;t store it <em>as</em> GeoJSON. Though we use Postgres a lot to generate JSON, which I want to talk about</li>
+</ul>
+</div>
+<div><h1 id="generate-geojson-from-your-data">Generate GeoJSON From Your Data</h1>
+<pre><code class="language-sql">SELECT ST_AsGeoJSON(geom) AS my_geojson FROM my_table;</code></pre>
+</div>
+<div><table border="1" style="border-collapse:collapse">
+<tr><th>my_geojson</th></tr>
+<tr><td>{&quot;type&quot;:&quot;Point&quot;,&quot;coordinates&quot;:[-85.233605,35.0832938]}</td></tr>
+<tr><td>{&quot;type&quot;:&quot;Point&quot;,&quot;coordinates&quot;:[-85.2724527,35.0493086]}</td></tr>
+<tr><td>{&quot;type&quot;:&quot;Point&quot;,&quot;coordinates&quot;:[-85.2853555,35.0377829]}</td></tr>
+<tr><td>{&quot;type&quot;:&quot;Point&quot;,&quot;coordinates&quot;:[-85.3018474,35.0192342]}</td></tr></table>
+
+</div>
+<div><h1 id="convert-a-query-to-geojson">Convert A Query To GeoJSON</h1>
+</div>
+<div><pre><code class="language-sql">SELECT row_to_json(fc)
+FROM (SELECT &#39;FeatureCollection&#39; AS type, array_to_json(array_agg(f)) AS features
+      FROM (SELECT &#39;Feature&#39;                                                   AS type,
+                   ST_AsGeoJSON(mt.geom) :: json                               AS geometry,
+                   row_to_json((SELECT t FROM (SELECT my_table_id, my_table_item) AS t)) AS properties
+            FROM my_table AS mt) AS f) AS fc;
+</code></pre>
+</div>
+<div><p>Let&#39;s say we want to grab all parcels on Market St. and display that as GeoJSON</p>
+</div>
+<div><pre><code class="language-sql">SELECT row_to_json(fc)
+FROM (SELECT &#39;FeatureCollection&#39; AS type, array_to_json(array_agg(f)) AS features
+      FROM (SELECT &#39;Feature&#39;                                                                           AS type,
+                   ST_AsGeoJSON(chas.geom) :: json                                                     AS geometry,
+                   row_to_json((SELECT cha FROM (SELECT gid, mastname, macity, &#39;TN&#39; AS state) AS cha)) AS properties
+            FROM cha_parcels_with_idx AS chas
+            WHERE macity = &#39;CHATTANOOGA&#39;
+              AND typesfx = &#39;ST&#39;
+              AND stname = &#39;MARKET&#39;) AS f) AS fc;</code></pre>
+</div>
+<div><p><img src="/images/mktstparcels.png" alt="Parcels on Market St."></p>
+</div>
+<div><h1 id="simplify-polygons">Simplify Polygons</h1>
+<p>PostGIS has <code>ST_Simplify</code> which implements the Ramer-Douglas–Peucker simplification algorithm:</p>
+<pre><code>geometry ST_Simplify(geometry geomA, float tolerance);</code></pre></div>
+<div><h1 id="unsimplified">Unsimplified</h1>
+<p><img src="/images/unsimplified.png" alt="Unsimplified"></p>
+</div>
+<div><h1 id="simplified">Simplified</h1>
+<p><img src="/images/simplified.png" alt="Simplified"></p>
+</div>
+<div><h1 id="turn-boundaries-to-polygons-and-vice-verse">Turn Boundaries To Polygons and vice verse</h1>
+<ul>
+<li><code>ST_ExteriorRing</code> takes a polygon and converts it to an outline.</li>
+<li><code>ST_MakePolygon</code> takes an outline and converts it to a polygon.</li>
+</ul>
+</div>
+<div><p><img src="/images/tnoutline.png" alt="Tennessee Outline"></p>
+<pre><code class="language-sql">SELECT ST_ExteriorRing(geom) FROM tennessee_whole;</code></pre>
+</div>
+<div><p><img src="/images/tnpoly.png" alt="Tennessee Polygon"></p>
+<pre><code class="language-sql">SELECT ST_MakePolygon(geom) FROM tennessee_whole_line;</code></pre>
+</div>
+<div><h1 id="split-big-polygons-into-a-bunch-of-smaller-ones">Split big polygons into a bunch of smaller ones</h1>
+<p><code>ST_Subdivide(geometry geom, integer max_vertices=256);</code></p>
+</div>
+<div><p><img src="/images/tnsubdiv.png" alt="Subdivided Tennessee"></p>
+</div>
+<div><p>Let&#39;s say I want to figure how how many Subway restaurants there are in Chattanooga.</p>
+</div>
+<div><pre><code class="language-sql">SELECT count(DISTINCT(geom))
+FROM cha_businesses
+WHERE &quot;business n&quot; LIKE &#39;%SUBWAY%&#39;
+  AND city = &#39;CHATTANOOGA&#39;</code></pre>
+<p>Yields 31.</p>
+</div>
+<div><p>So what area does that cover exactly? Can we visualize that?</p>
+</div>
+<div><pre><code class="language-sql">SELECT ST_ConvexHull(ST_Collect(geom))
+FROM cha_businesses
+WHERE &quot;business n&quot; LIKE &#39;%SUBWAY%&#39;
+  AND city = &#39;CHATTANOOGA&#39;</code></pre>
+</div>
+<div><p><img src="/images/subwayboundary.png" alt="Subway Boundary"></p>
+</div>
+<div><p>What if I&#39;m at the aquarium and I want to find the closest Subway so I can get a sandwich.</p>
+</div>
+<div><pre><code class="language-sql">SELECT ST_Distance(ST_Transform(geom, 3662),
+                   ST_Transform(ST_SetSRID(ST_MakePoint(-85.311086, 35.055753), 4326), 3662)) / 5280 AS d,
+       &quot;business n&quot;,
+       &quot;street dir&quot;,
+       &quot;street num&quot;,
+       &quot;street nam&quot;,
+       &quot;street suf&quot;,
+       &quot;city&quot;,
+       &quot;state&quot;,
+       &quot;zip&quot;
+FROM cha_businesses
+WHERE &quot;business n&quot; LIKE &#39;%SUBWAY%&#39;
+  AND city = &#39;CHATTANOOGA&#39;
+
+ORDER BY ST_Transform(geom, 3662) &lt;-&gt; ST_Transform(ST_SetSRID(ST_MakePoint(-85.311086, 35.055753), 4326), 3662)
+limit 10;</code></pre>
+</div>
+<div><table border="1" style="border-collapse:collapse">
+<tr><th>d</th><th>business n</th><th>street dir</th><th>street num</th><th>street nam</th><th>street suf</th><th>city</th><th>state</th><th>zip</th></tr>
+<tr><td>0.5168637644049433</td><td>SCENIC CITY SUBWAY #16282</td><td>NULL</td><td>208</td><td>FRAZIER</td><td>AVE</td><td>CHATTANOOGA</td><td>TN</td><td>37405</td></tr>
+<tr><td>0.6542807510309095</td><td>CHATTANOOGA SUBWAY #4014</td><td>NULL</td><td>850</td><td>MARKET</td><td>ST</td><td>CHATTANOOGA</td><td>TN</td><td>37402</td></tr>
+<tr><td>0.6542807510309095</td><td>SUBWAY SANDWICHES AND SALADS</td><td>NULL</td><td>850</td><td>MARKET</td><td>ST</td><td>CHATTANOOGA</td><td>TN</td><td>37402</td></tr>
+<tr><td>1.261728424758831</td><td>SUBWAY</td><td>E</td><td>979</td><td>3RD</td><td>ST</td><td>CHATTANOOGA</td><td>TN</td><td>37403</td></tr>
+<tr><td>2.511786963294291</td><td>SCENIC CITY SUBWAY 2267</td><td>NULL</td><td>3127</td><td>BROAD</td><td>ST</td><td>CHATTANOOGA</td><td>TN</td><td>37408</td></tr>
+<tr><td>2.750917870740592</td><td>SUBWAY #25008</td><td>NULL</td><td>2610</td><td>AMNICOLA</td><td>HWY</td><td>CHATTANOOGA</td><td>TN</td><td>37406</td></tr>
+<tr><td>2.8590235205819137</td><td>MELISSA&#39;S SUBWAY, LLC</td><td>NULL</td><td>2333</td><td>MCCALLIE</td><td>AVE</td><td>CHATTANOOGA</td><td>TN</td><td>37404</td></tr>
+<tr><td>2.8590235205819137</td><td>CHATTANOOGA SUBWAY #53183</td><td>NULL</td><td>2333</td><td>MCCALLIE</td><td>AVE</td><td>CHATTANOOGA</td><td>TN</td><td>37404</td></tr>
+<tr><td>2.9490039641986137</td><td>SUBWAY #40655</td><td>NULL</td><td>601</td><td>SIGNAL MOUNTAIN</td><td>RD</td><td>CHATTANOOGA</td><td>TN</td><td>37405</td></tr>
+<tr><td>3.0175841895129123</td><td>CHATTANOOGA SUBWAY #60915</td><td>NULL</td><td>2525</td><td>DE SALES</td><td>AVE</td><td>CHATTANOOGA</td><td>TN</td><td>37404</td></tr></table>
+
+</div>
+<div><p>FIN</p>
+</div>
+</body>
+</html>
