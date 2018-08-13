@@ -17,7 +17,7 @@
   <div><p>&quot;Hey, where are these spatial indexes?&quot;</p>
 <p>Adventures of PostGIS in Production</p>
 </div>
-<div><h1 id="we-ve-been-at-it-a-while">We&#39;ve Been At It A While</h1>
+<div><h1 id="we-use-postgis-a-lot-">We use PostGIS! A lot!</h1>
 <ul>
 <li>PostGIS in production since about 2013</li>
 <li>Serve a bunch of geospatial data. Includes OSM and our customer&#39;s various geospatial data</li>
@@ -164,12 +164,12 @@ You need to know:</p>
 </div>
 <div><p>With that info, if we have what we need we can add our SRS.</p>
 </div>
-<div><p>INSERT into spatial_ref_sys (srid, auth_name, auth_srid, proj4text, srtext)
+<div><pre><code class="language-sql">INSERT into spatial_ref_sys (srid, auth_name, auth_srid, proj4text, srtext)
 values (102008,
         &#39;ESRI&#39;,
         102008,
         srtexthere,
-        proj4texthere);</p>
+        proj4texthere);</code></pre>
 </div>
 <div><p>And we can transform an existing geometry to that SRS.</p>
 </div>
@@ -240,11 +240,13 @@ FROM (SELECT &#39;FeatureCollection&#39; AS type, array_to_json(array_agg(f)) AS
 <div><h1 id="simplified">Simplified</h1>
 <p><img src="images/simplified.png" alt="Simplified"></p>
 </div>
-<div><h1 id="turn-boundaries-to-polygons-and-vice-verse">Turn Boundaries To Polygons and vice verse</h1>
+<div><h1 id="turn-boundaries-to-polygons-and-vice-versa">Turn Boundaries To Polygons and vice versa</h1>
 <ul>
 <li><code>ST_ExteriorRing</code> takes a polygon and converts it to an outline.</li>
 <li><code>ST_MakePolygon</code> takes an outline and converts it to a polygon.</li>
 </ul>
+</div>
+<div><p><img src="images/linestringissue.png" alt="Client issue"></p>
 </div>
 <div><p><img src="images/tnoutline.png" alt="Tennessee Outline"></p>
 <pre><code class="language-sql">SELECT ST_ExteriorRing(geom) FROM tennessee_whole;</code></pre>
@@ -307,7 +309,12 @@ limit 10;</code></pre>
 <tr><td>3.0175841895129123</td><td>CHATTANOOGA SUBWAY #60915</td><td>NULL</td><td>2525</td><td>DE SALES</td><td>AVE</td><td>CHATTANOOGA</td><td>TN</td><td>37404</td></tr></table>
 
 </div>
-<div><p>FIN</p>
+<div><p>Thanks!</p>
+<ul>
+<li>I&#39;m @seabre on Twitter</li>
+<li><a href="mailto:sean@seabre.com">sean@seabre.com</a> or <a href="mailto:sean@crowdfiber.com">sean@crowdfiber.com</a></li>
+<li>Find this presentation here: <a href="https://seabre.github.io/foss4g-knoxville-2018/">https://seabre.github.io/foss4g-knoxville-2018/</a></li>
+</ul>
 </div>
 </body>
 </html>

@@ -4,7 +4,7 @@ Adventures of PostGIS in Production
 
 ---
 
-# We've Been At It A While
+# We use PostGIS! A lot!
 
 * PostGIS in production since about 2013
 * Serve a bunch of geospatial data. Includes OSM and our customer's various geospatial data
@@ -205,12 +205,14 @@ With that info, if we have what we need we can add our SRS.
 
 ---
 
+```sql
 INSERT into spatial_ref_sys (srid, auth_name, auth_srid, proj4text, srtext)
 values (102008,
         'ESRI',
         102008,
         srtexthere,
         proj4texthere);
+```
 ---
 
 And we can transform an existing geometry to that SRS.
@@ -329,10 +331,14 @@ geometry ST_Simplify(geometry geomA, float tolerance);
 
 ---
 
-# Turn Boundaries To Polygons and vice verse
+# Turn Boundaries To Polygons and vice versa
 
 * `ST_ExteriorRing` takes a polygon and converts it to an outline.
 * `ST_MakePolygon` takes an outline and converts it to a polygon.
+
+---
+
+![Client issue](images/linestringissue.png)
 
 ---
 
@@ -434,4 +440,8 @@ limit 10;
 
 ---
 
-FIN
+Thanks!
+
+* I'm @seabre on Twitter
+* sean@seabre.com or sean@crowdfiber.com
+* Find this presentation here: https://seabre.github.io/foss4g-knoxville-2018/
