@@ -78,7 +78,7 @@ Average Runtime: 49.088ms
 ---
 
 # With Index: Query Plan
-![Query plan with index](/images/qry_with_index.png)
+![Query plan with index](images/qry_with_index.png)
 
 ---
 
@@ -95,7 +95,7 @@ Average Runtime: 24,546.889ms
 ---
 
 # With Index: Query Plan
-![Query plan without index](/images/qry_no_index.png)
+![Query plan without index](images/qry_no_index.png)
 
 ---
 
@@ -197,7 +197,7 @@ Or if you have a shapefile with a `.prj` file, you can run `gdalsrsinfo` on it
 
 ---
 
-![gdalsrsinfo](/images/gdalsrsinfo.png)
+![gdalsrsinfo](images/gdalsrsinfo.png)
 
 ---
 
@@ -304,7 +304,7 @@ FROM (SELECT 'FeatureCollection' AS type, array_to_json(array_agg(f)) AS feature
 
 ---
 
-![Parcels on Market St.](/images/mktstparcels.png)
+![Parcels on Market St.](images/mktstparcels.png)
 
 ---
 
@@ -319,13 +319,13 @@ geometry ST_Simplify(geometry geomA, float tolerance);
 
 # Unsimplified
 
-![Unsimplified](/images/unsimplified.png)
+![Unsimplified](images/unsimplified.png)
 
 ---
 
 # Simplified
 
-![Simplified](/images/simplified.png)
+![Simplified](images/simplified.png)
 
 ---
 
@@ -336,7 +336,7 @@ geometry ST_Simplify(geometry geomA, float tolerance);
 
 ---
 
-![Tennessee Outline](/images/tnoutline.png)
+![Tennessee Outline](images/tnoutline.png)
 
 ```sql
 SELECT ST_ExteriorRing(geom) FROM tennessee_whole;
@@ -344,7 +344,7 @@ SELECT ST_ExteriorRing(geom) FROM tennessee_whole;
 
 ---
 
-![Tennessee Polygon](/images/tnpoly.png)
+![Tennessee Polygon](images/tnpoly.png)
 
 ```sql
 SELECT ST_MakePolygon(geom) FROM tennessee_whole_line;
@@ -357,7 +357,7 @@ SELECT ST_MakePolygon(geom) FROM tennessee_whole_line;
 
 ---
 
-![Subdivided Tennessee](/images/tnsubdiv.png)
+![Subdivided Tennessee](images/tnsubdiv.png)
 
 ---
 
@@ -390,7 +390,7 @@ WHERE "business n" LIKE '%SUBWAY%'
 ---
 
 
-![Subway Boundary](/images/subwayboundary.png)
+![Subway Boundary](images/subwayboundary.png)
 
 ---
 

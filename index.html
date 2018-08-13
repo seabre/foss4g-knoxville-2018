@@ -72,7 +72,7 @@ FROM cha_addr_with_idx a
 <p>Average Runtime: 49.088ms</p>
 </div>
 <div><h1 id="with-index-query-plan">With Index: Query Plan</h1>
-<p><img src="/images/qry_with_index.png" alt="Query plan with index"></p>
+<p><img src="images/qry_with_index.png" alt="Query plan with index"></p>
 </div>
 <div><h1 id="without-index-query">Without Index: Query</h1>
 <pre><code class="language-sql">SELECT *
@@ -82,7 +82,7 @@ FROM cha_addr_no_idx a
 <p>Average Runtime: 24,546.889ms</p>
 </div>
 <div><h1 id="with-index-query-plan">With Index: Query Plan</h1>
-<p><img src="/images/qry_no_index.png" alt="Query plan without index"></p>
+<p><img src="images/qry_no_index.png" alt="Query plan without index"></p>
 </div>
 <div><h1 id="so-what-kind-of-index-do-i-want">So what kind of index do I want</h1>
 <ul>
@@ -160,7 +160,7 @@ You need to know:</p>
 </div>
 <div><p>Or if you have a shapefile with a <code>.prj</code> file, you can run <code>gdalsrsinfo</code> on it</p>
 </div>
-<div><p><img src="/images/gdalsrsinfo.png" alt="gdalsrsinfo"></p>
+<div><p><img src="images/gdalsrsinfo.png" alt="gdalsrsinfo"></p>
 </div>
 <div><p>With that info, if we have what we need we can add our SRS.</p>
 </div>
@@ -229,16 +229,16 @@ FROM (SELECT &#39;FeatureCollection&#39; AS type, array_to_json(array_agg(f)) AS
               AND typesfx = &#39;ST&#39;
               AND stname = &#39;MARKET&#39;) AS f) AS fc;</code></pre>
 </div>
-<div><p><img src="/images/mktstparcels.png" alt="Parcels on Market St."></p>
+<div><p><img src="images/mktstparcels.png" alt="Parcels on Market St."></p>
 </div>
 <div><h1 id="simplify-polygons">Simplify Polygons</h1>
 <p>PostGIS has <code>ST_Simplify</code> which implements the Ramer-Douglas–Peucker simplification algorithm:</p>
 <pre><code>geometry ST_Simplify(geometry geomA, float tolerance);</code></pre></div>
 <div><h1 id="unsimplified">Unsimplified</h1>
-<p><img src="/images/unsimplified.png" alt="Unsimplified"></p>
+<p><img src="images/unsimplified.png" alt="Unsimplified"></p>
 </div>
 <div><h1 id="simplified">Simplified</h1>
-<p><img src="/images/simplified.png" alt="Simplified"></p>
+<p><img src="images/simplified.png" alt="Simplified"></p>
 </div>
 <div><h1 id="turn-boundaries-to-polygons-and-vice-verse">Turn Boundaries To Polygons and vice verse</h1>
 <ul>
@@ -246,16 +246,16 @@ FROM (SELECT &#39;FeatureCollection&#39; AS type, array_to_json(array_agg(f)) AS
 <li><code>ST_MakePolygon</code> takes an outline and converts it to a polygon.</li>
 </ul>
 </div>
-<div><p><img src="/images/tnoutline.png" alt="Tennessee Outline"></p>
+<div><p><img src="images/tnoutline.png" alt="Tennessee Outline"></p>
 <pre><code class="language-sql">SELECT ST_ExteriorRing(geom) FROM tennessee_whole;</code></pre>
 </div>
-<div><p><img src="/images/tnpoly.png" alt="Tennessee Polygon"></p>
+<div><p><img src="images/tnpoly.png" alt="Tennessee Polygon"></p>
 <pre><code class="language-sql">SELECT ST_MakePolygon(geom) FROM tennessee_whole_line;</code></pre>
 </div>
 <div><h1 id="split-big-polygons-into-a-bunch-of-smaller-ones">Split big polygons into a bunch of smaller ones</h1>
 <p><code>ST_Subdivide(geometry geom, integer max_vertices=256);</code></p>
 </div>
-<div><p><img src="/images/tnsubdiv.png" alt="Subdivided Tennessee"></p>
+<div><p><img src="images/tnsubdiv.png" alt="Subdivided Tennessee"></p>
 </div>
 <div><p>Let&#39;s say I want to figure how how many Subway restaurants there are in Chattanooga.</p>
 </div>
@@ -272,7 +272,7 @@ FROM cha_businesses
 WHERE &quot;business n&quot; LIKE &#39;%SUBWAY%&#39;
   AND city = &#39;CHATTANOOGA&#39;</code></pre>
 </div>
-<div><p><img src="/images/subwayboundary.png" alt="Subway Boundary"></p>
+<div><p><img src="images/subwayboundary.png" alt="Subway Boundary"></p>
 </div>
 <div><p>What if I&#39;m at the aquarium and I want to find the closest Subway so I can get a sandwich.</p>
 </div>
