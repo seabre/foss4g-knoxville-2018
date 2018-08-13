@@ -342,6 +342,16 @@ geometry ST_Simplify(geometry geomA, float tolerance);
 
 ---
 
+I would solve that with something like this:
+
+```sql
+UPDATE tennessee_whole_line
+SET geom = ST_MakePolygon(geom)
+WHERE id = 1;
+```
+
+---
+
 ![Tennessee Outline](images/tnoutline.png)
 
 ```sql

@@ -248,6 +248,11 @@ FROM (SELECT &#39;FeatureCollection&#39; AS type, array_to_json(array_agg(f)) AS
 </div>
 <div><p><img src="images/linestringissue.png" alt="Client issue"></p>
 </div>
+<div><p>I would solve that with something like this:</p>
+<pre><code class="language-sql">UPDATE tennessee_whole_line
+SET geom = ST_MakePolygon(geom)
+WHERE id = 1;</code></pre>
+</div>
 <div><p><img src="images/tnoutline.png" alt="Tennessee Outline"></p>
 <pre><code class="language-sql">SELECT ST_ExteriorRing(geom) FROM tennessee_whole;</code></pre>
 </div>
